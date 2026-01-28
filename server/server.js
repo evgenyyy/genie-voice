@@ -34,7 +34,7 @@ async function callGatewayOpenResponses({ input, user, agentId = 'main' }) {
 
   const data = await resp.json();
 
-  // Extract output_text
+  // Extract output_text (concatenate)
   let out = '';
   for (const item of data.output || []) {
     if (item.type === 'message') {
@@ -46,6 +46,30 @@ async function callGatewayOpenResponses({ input, user, agentId = 'main' }) {
   return out.trim();
 }
 
+async function invokeGatewayTool({ tool, args }) {
+  const url = process.env.CLAWDBOT_GATEWAY_URL;
+  const token = process.env.CLAWDBOT_GATEWAY_TOKEN;
+  if (!url || !token) throw new Error('Missing CLAWDBOT_GATEWAY_URL or CLAWDBOT_GATEWAY_TOKEN');
+
+  const resp = await fetch(`${url.replace(/\/$/, '')}/tools/invoke`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      // helps policy routing for messaging tools
+      'x-clawdbot-message-channel': 'telegram',
+    },
+    body: JSON.stringify({ tool, args }),
+  });
+
+  const data = await resp.json().catch(() => null);
+  if (!resp.ok || !data?.ok) {
+    const msg = data?.error?.message || `${resp.status} ${resp.statusText}`;
+    throw new Error(`Gateway tool invoke failed (${tool}): ${msg}`);
+  }
+  return data.result;
+}
+
 // Webhook Conversation: Conversation Agent endpoint
 app.post('/ha/conversation', async (req, res) => {
   try {
@@ -55,8 +79,8 @@ app.post('/ha/conversation', async (req, res) => {
     const deviceName = body?.device_info?.name || body?.device_id || 'unknown device';
     const conversationId = body?.conversation_id || 'unknown';
 
-    // This is the key prompt: act like a Telegram message, but produce two outputs.
-    // We instruct the agent to send full answer to Telegram (via tool), and return ONLY voice summary as plain text.
+    // Key behavior: ONE model call returns BOTH outputs as JSON, then we send Telegram ourselves.
+    // This avoids tool-calls inside the model run (faster + less timeout risk for HA).
     const input = [
       {
         type: 'message',
@@ -68,21 +92,42 @@ app.post('/ha/conversation', async (req, res) => {
               `VOICE REQUEST (Home Assistant)\n` +
               `device: ${deviceName}\n` +
               `conversation_id: ${conversationId}\n\n` +
-              `Treat the following request exactly as if Jay sent it to you on Telegram, so all your capabilities/tools are available.\n\n` +
-              `1) First, send Jay a Telegram DM using the message tool (channel=telegram, target=160489990). The message must start with: \"You asked via voice: ${query}\" and then provide your full normal answer (links/code allowed).\n` +
-              `2) Then, return ONLY a short, natural, TTS-friendly summary (no links, no code blocks), suitable to be spoken out loud.\n\n` +
+              `Treat the following request exactly as if Jay sent it to you on Telegram.\n` +
+              `Return STRICT JSON with keys:\n` +
+              `- telegram_message: string (full rich answer; include links/code/bullets if useful; must start with \"You asked via voice: ${query}\")\n` +
+              `- voice_summary: string (short, natural, TTS-friendly; no links; no code blocks)\n\n` +
               `Request: ${query}`
           }
         ],
       },
     ];
 
-    // One continuous Jay session across devices, but keep device context in the prompt.
-    const user = `jay:ha_voice`;
-    const voiceSummary = await callGatewayOpenResponses({ input, user, agentId: process.env.CLAWDBOT_AGENT_ID || 'main' });
+    const user = `jay:ha_voice`; // one continuous Jay session across devices
+    const raw = await callGatewayOpenResponses({ input, user, agentId: process.env.CLAWDBOT_AGENT_ID || 'main' });
 
-    // Webhook Conversation will read this field as output (configurable)
-    res.json({ output: voiceSummary || "I've sent you the full answer on Telegram." });
+    let telegram_message = '';
+    let voice_summary = '';
+    try {
+      const parsed = JSON.parse(raw);
+      telegram_message = String(parsed.telegram_message || '');
+      voice_summary = String(parsed.voice_summary || '');
+    } catch {
+      // fallback if the model didn't obey JSON-only
+      telegram_message = `You asked via voice: ${query}\n\n${raw}`;
+      voice_summary = raw;
+    }
+
+    // Send full answer to Telegram (best-effort). Voice summary must still return to HA.
+    try {
+      await invokeGatewayTool({
+        tool: 'message',
+        args: { action: 'send', channel: 'telegram', target: '160489990', message: telegram_message },
+      });
+    } catch (e) {
+      console.error('Failed to send Telegram message:', e);
+    }
+
+    res.json({ output: voice_summary || "I've sent you the full answer on Telegram." });
   } catch (err) {
     console.error(err);
     res.status(500).json({ output: "Something went wrong. I've sent details to Telegram." });
