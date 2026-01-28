@@ -20,6 +20,14 @@ So: the webhook endpoint must return **only** the voice summary to HA, while als
 - HA does STT locally/within HA (existing pipeline).
 - HA uses **Webhook Conversation** as the Conversation Agent.
 - Webhook URL points at: `POST /ha/conversation` on `genie-voice-server`.
+
+## HA setup checklist (Jay LAN)
+
+- Genie box IP: `192.168.1.183`
+- Conversation Agent webhook URL: `http://192.168.1.183:3210/ha/conversation`
+- Output Field: `output`
+- Timeout: start with `60s` (can reduce once stable)
+
 - In Webhook Conversation config, set **Output Field** to `output` (default).
 
 ### 2) genie-voice-server (bridge)
