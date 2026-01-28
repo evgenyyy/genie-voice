@@ -69,7 +69,7 @@ app.post('/ha/conversation', async (req, res) => {
               `device: ${deviceName}\n` +
               `conversation_id: ${conversationId}\n\n` +
               `Treat the following request exactly as if Jay sent it to you on Telegram, so all your capabilities/tools are available.\n\n` +
-              `1) First, send Jay a Telegram message that starts with: \"You asked via voice: ${query}\" and then provide your full normal answer (links/code allowed).\n` +
+              `1) First, send Jay a Telegram DM using the message tool (channel=telegram, target=160489990). The message must start with: \"You asked via voice: ${query}\" and then provide your full normal answer (links/code allowed).\n` +
               `2) Then, return ONLY a short, natural, TTS-friendly summary (no links, no code blocks), suitable to be spoken out loud.\n\n` +
               `Request: ${query}`
           }
