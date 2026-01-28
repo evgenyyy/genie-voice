@@ -1,0 +1,12 @@
+{
+  "name": "genie-voice-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "test": "node -c server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

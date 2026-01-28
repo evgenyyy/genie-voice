@@ -1,0 +1,28 @@
+{
+  "conversation_id": "abc123",
+  "user_id": "user_id_from_ha",
+  "language": "en-GB",
+  "agent_id": "conversation.webhook_agent",
+  "device_id": "kitchen_satellite",
+  "device_info": {
+    "name": "Kitchen Voice Satellite",
+    "manufacturer": "Raspberry Pi",
+    "model": "Pi 4B"
+  },
+  "messages": [
+    {"role": "user", "content": "Turn on the living room lights"}
+  ],
+  "query": "Turn on the living room lights",
+  "exposed_entities": [
+    {
+      "entity_id": "light.living_room",
+      "name": "Living Room Light",
+      "state": "off",
+      "aliases": ["main light"],
+      "area_id": "living_room",
+      "area_name": "Living Room"
+    }
+  ],
+  "system_prompt": "",
+  "stream": false
+}
