@@ -117,17 +117,25 @@ app.post('/ha/conversation', async (req, res) => {
       voice_summary = raw;
     }
 
-    // Send full answer to Telegram (best-effort). Voice summary must still return to HA.
-    try {
-      await invokeGatewayTool({
-        tool: 'message',
-        args: { action: 'send', channel: 'telegram', target: '160489990', message: telegram_message },
-      });
-    } catch (e) {
-      console.error('Failed to send Telegram message:', e);
-    }
+    // Always return to HA ASAP.
+    const spoken = (voice_summary || "I've sent you the full answer on Telegram.")
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 500);
 
-    res.json({ output: voice_summary || "I've sent you the full answer on Telegram." });
+    res.json({ output: spoken });
+
+    // Fire-and-forget Telegram send so HA response isn't blocked.
+    setImmediate(async () => {
+      try {
+        await invokeGatewayTool({
+          tool: 'message',
+          args: { action: 'send', channel: 'telegram', target: '160489990', message: telegram_message },
+        });
+      } catch (e) {
+        console.error('Failed to send Telegram message:', e);
+      }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ output: "Something went wrong. I've sent details to Telegram." });

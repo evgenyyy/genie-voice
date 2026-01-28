@@ -1,0 +1,20 @@
+[Unit]
+Description=genie-voice (Home Assistant voice → Genie bridge)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/evgeny/clawd/genie-voice/server
+ExecStart=/usr/bin/env bash -lc '/home/evgeny/clawd/genie-voice/server/run-dev.sh'
+Restart=always
+RestartSec=2
+
+# Environment (create this file with the vars from server/.env.example)
+EnvironmentFile=/home/evgeny/clawd/genie-voice/server/.env
+
+# Security hardening (light)
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
