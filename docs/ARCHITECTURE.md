@@ -57,9 +57,10 @@ This keeps voice interactions searchable in Telegram.
 
 ## Session + context
 
-- Use OpenResponses `user` to derive a stable session key per device or per Jay.
-  - Example: `user: "ha_voice:<device_id>"`
-- Optional: include `conversation_id` so repeated turns stay coherent.
+- Use OpenResponses `user` to derive a stable session key **for Jay** (shared across devices).
+  - Example: `user: "jay"` (or `"jay:ha_voice"`).
+- Still include `device_id` / `device_info` in the prompt so Genie can infer room-context.
+- Optional: include `conversation_id` so repeated turns stay coherent across turns.
 
 ## Security
 
@@ -85,7 +86,7 @@ We will need to enable:
 }
 ```
 
-I will not change this until you explicitly approve.
+Approved by Jay (2026-01-28): we can enable this endpoint; still keep it LAN/private + token-protected.
 
 ## Why this approach
 

@@ -77,7 +77,8 @@ app.post('/ha/conversation', async (req, res) => {
       },
     ];
 
-    const user = `ha_voice:${body?.device_id || 'unknown'}:${body?.user_id || 'unknown'}`;
+    // One continuous Jay session across devices, but keep device context in the prompt.
+    const user = `jay:ha_voice`;
     const voiceSummary = await callGatewayOpenResponses({ input, user, agentId: process.env.CLAWDBOT_AGENT_ID || 'main' });
 
     // Webhook Conversation will read this field as output (configurable)
